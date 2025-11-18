@@ -4,24 +4,21 @@ import os
 import pandas as pd
 import re
 
+# Имена общих таблиц
+MAIN_TABLE_FILENAME = "applications.csv"
+MEDS_TABLE_FILENAME = "medications.csv"
+
 
 # ----------------- нормализация дозировки ----------------- #
-
+"""
+Преобразует дозу в стандартный формат (mg или mg/ml).
+Возвращает (standardized_dose: float | None, standardized_unit: str | None)
+"""
 def normalize_dosage_value(dosage: str, dosage_unit: str):
-    """
-    Преобразует дозу в стандартный формат (mg или mg/ml).
-    Возвращает (standardized_dose: float | None, standardized_unit: str | None)
-
-    Логика простая:
-    - берём ПЕРВОЕ число из строки dosage
-    - конвертируем mcg, g в mg
-    - если unit неизвестен — возвращаем None
-    """
     if not dosage or not dosage_unit:
         return None, None
 
     dosage_unit = dosage_unit.lower().strip()
-    # берём первое число из строки
     m = re.search(r"([\d\.]+)", dosage)
     if not m:
         return None, None
@@ -37,7 +34,6 @@ def normalize_dosage_value(dosage: str, dosage_unit: str):
     if dosage_unit in ["mg/ml", "mg per ml", "mg/mL"]:
         return val, "mg/ml"
 
-    # если единицы странные/неизвестные
     return None, None
 
 
@@ -45,8 +41,7 @@ def normalize_dosage_value(dosage: str, dosage_unit: str):
 
 def build_main_record(data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Строит одну строку для общей таблицы заявки
-    по описанной тобой структуре.
+    Строит одну строку для общей таблицы заявки.
     """
     uid = data.get("uid", "")
     check_it = data.get("check_it", False)
@@ -132,7 +127,8 @@ def build_medication_records(data: Dict[str, Any]) -> List[Dict[str, Any]]:
     # по умолчанию считаем, что все meds относятся к main applicant (0)
     main_applicant_id = applicants[0].get("applicant", 0) if applicants else 0
 
-    records = []
+    # records = []
+    records: List[Dict[str, Any]] = []
 
     for med in meds:
         applicant_id = med.get("applicant", main_applicant_id)
@@ -142,7 +138,9 @@ def build_medication_records(data: Dict[str, Any]) -> List[Dict[str, Any]]:
         freq = med.get("frequency", "")
         descr = med.get("description", "")
 
-        std_dose, std_unit = normalize_dosage_value(dosage, dosage_unit)
+        std_dose = dosage
+        std_unit = dosage_unit
+        #std_dose, std_unit = normalize_dosage_value(dosage, dosage_unit)
 
         # пока check_it и reason_checking для строки медикамента
         # просто копируем из верхнего уровня;
@@ -163,6 +161,8 @@ def build_medication_records(data: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "check_it": check_it,
                 "reason_checking": reason_checking,
                 "reason_checking_dosage_unit": reason_checking_dosage_unit,
+                "frequency": freq,
+                "description": descr,
             }
         )
 
@@ -182,35 +182,92 @@ def json_to_tables_from_dict(data: Dict[str, Any]) -> Tuple[pd.DataFrame, pd.Dat
 
     return main_df, meds_df
 
-
+"""
+Загружает JSON из файла и возвращает
+два DataFrame: main_df, meds_df.
+"""
 def json_to_tables_from_file(path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Загружает JSON из файла и возвращает
-    два DataFrame: main_df, meds_df.
-    """
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
-
     return json_to_tables_from_dict(data)
 
 
+def append_to_global_tables(
+    main_df_new: pd.DataFrame,
+    meds_df_new: pd.DataFrame,
+    output_dir: str,
+) -> None:
+    """
+    Добавляет новые записи в общие таблицы (applications.csv и medications.csv),
+    не пересоздавая их и убирая дубли.
+
+    "Такая же запись" = строка, совпадающая по всем колонкам.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+
+    main_path = os.path.join(output_dir, MAIN_TABLE_FILENAME)
+    meds_path = os.path.join(output_dir, MEDS_TABLE_FILENAME)
+
+    # ---- общая таблица заявок ----
+    if os.path.exists(main_path):
+        main_df_old = pd.read_csv(main_path)
+        main_df_all = pd.concat([main_df_old, main_df_new], ignore_index=True)
+        main_df_all = main_df_all.drop_duplicates()
+    else:
+        main_df_all = main_df_new.copy()
+
+    main_df_all.to_csv(main_path, index=False)
+
+    # ---- общая таблица медикаментов ----
+    if os.path.exists(meds_path):
+        meds_df_old = pd.read_csv(meds_path)
+        meds_df_all = pd.concat([meds_df_old, meds_df_new], ignore_index=True)
+        meds_df_all = meds_df_all.drop_duplicates()
+    else:
+        meds_df_all = meds_df_new.copy()
+
+    meds_df_all.to_csv(meds_path, index=False)
 
 
 
+
+# ----------------- пример использования как скрипта ----------------- #
 
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "output_files")
 
 if __name__ == "__main__":
-    json_path = os.path.join(OUTPUT_DIR, "416887602_response.txt")
+    # Ищем все JSON-ответы вида *_response.json в папке OUTPUT_DIR
+    if not os.path.isdir(OUTPUT_DIR):
+        raise FileNotFoundError(f"Директория с JSON не найдена: {OUTPUT_DIR}")
 
-    main_df, meds_df = json_to_tables_from_file(json_path)
+    json_files = [
+        f for f in os.listdir(OUTPUT_DIR)
+        if f.lower().endswith("_response.json")
+    ]
 
-    # сохраняем в CSV
-    main_csv = os.path.join(OUTPUT_DIR, "416887602_main.csv")
-    meds_csv = os.path.join(OUTPUT_DIR, "416887602_meds.csv")
+    if not json_files:
+        raise FileNotFoundError(f"В {OUTPUT_DIR} не найдено ни одного *_response.json")
 
-    main_df.to_csv(main_csv, index=False)
-    meds_df.to_csv(meds_csv, index=False)
+    all_main_dfs: List[pd.DataFrame] = []
+    all_meds_dfs: List[pd.DataFrame] = []
 
-    print(f"Main table saved to: {main_csv}")
-    print(f"Medications table saved to: {meds_csv}")
+    print("Найдены JSON-ответы:")
+    for fname in json_files:
+        print("  -", fname)
+        json_path = os.path.join(OUTPUT_DIR, fname)
+
+        main_df, meds_df = json_to_tables_from_file(json_path)
+        all_main_dfs.append(main_df)
+        all_meds_dfs.append(meds_df)
+
+    # Объединяем всё в один DataFrame по заявкам и один по медикаментам
+    combined_main_df = pd.concat(all_main_dfs, ignore_index=True)
+    combined_meds_df = pd.concat(all_meds_dfs, ignore_index=True)
+
+    # Дописываем в общие таблицы (или создаём, если их ещё нет),
+    # удаляя дубли
+    append_to_global_tables(combined_main_df, combined_meds_df, OUTPUT_DIR)
+
+    print("Записи из всех JSON добавлены в общие таблицы:")
+    print(f"- {os.path.join(OUTPUT_DIR, MAIN_TABLE_FILENAME)}")
+    print(f"- {os.path.join(OUTPUT_DIR, MEDS_TABLE_FILENAME)}")

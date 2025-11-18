@@ -1,8 +1,7 @@
-from pypdf import PdfReader
 from openai import OpenAI
 import os, sys, json
 from dotenv import load_dotenv
-
+import re
 from reader import read_pdf_text_pdfplumber
 from prompt import prompt_template, target_json_format
 
@@ -17,9 +16,10 @@ def build_prompt(pdf_text: str) -> str:
     )
 
 
-def run_extraction_prompt(pdf_text: str, client: OpenAI) -> str:
+def run_extraction_prompt(pdf_text: str, client: OpenAI, uid: str) -> str:
     """
-    Отправляет текст PDF в модель OpenAI и возвращает JSON-строку (как текст).
+    Отправляет текст PDF в модель OpenAI и возвращает JSON-строку.
+    Вставляет UID в результат.
     """
     prompt = build_prompt(pdf_text)
 
@@ -41,9 +41,16 @@ def run_extraction_prompt(pdf_text: str, client: OpenAI) -> str:
             },
         ],
     )
+    json_str = response.choices[0].message.content
+    json_str = re.sub(
+        r'"uid"\s*:\s*"[^"]*"',
+        f'"uid": "{uid}"',
+        json_str,
+        count=1
+    )
 
     # В новой версии клиента content — это строка
-    return response.choices[0].message.content
+    return json_str
 
 def process_pdf(pdf_path: str, client: OpenAI, output_dir: str):
     """
@@ -75,7 +82,8 @@ def process_pdf(pdf_path: str, client: OpenAI, output_dir: str):
 
     # Отправляем запрос в модель
     print("Отправляем запрос в OpenAI...")
-    json_str = run_extraction_prompt(prompt_text, client)
+    uid = os.path.splitext(os.path.basename(pdf_path))[0]
+    json_str = run_extraction_prompt(prompt_text, client, uid)
 
     # Конвертируем строку → JSON (dict)
     try:
