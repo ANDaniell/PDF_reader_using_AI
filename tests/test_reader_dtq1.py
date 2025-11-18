@@ -14,7 +14,7 @@ from reader import (
 # Если у тебя другая структура, поправь только эту константу.
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-PDF_PATH = os.path.join(PROJECT_ROOT, "test_files", "DTQ1.pdf")
+PDF_PATH = os.path.join(PROJECT_ROOT, "input_files", "DTQ1.pdf")
 
 
 def normalize_ws(text: str) -> str:

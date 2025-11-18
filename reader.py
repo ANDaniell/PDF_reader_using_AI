@@ -1,12 +1,3 @@
-# src/pdf/reader.py
-
-"""
-PDF Reader Module
------------------
-Читает текст из PDF-файлов, используя библиотеку pypdf.
-Возвращает чистый текст, объединённый по страницам.
-"""
-
 from pypdf import PdfReader
 
 
@@ -136,3 +127,36 @@ def extract_form_fields_pypdf(path: str) -> Dict[str, Any]:
         result[name] = normalized_value
 
     return result
+
+
+def compare_extractors(path: str):
+    """
+    Сравнивает pypdf, pdfplumber и pymupdf.
+    Печатает различия в длине текста и примеры.
+    """
+    print("\n=== Comparing three PDF extractors ===")
+
+    results = {}
+
+    # pypdf
+    results["pypdf"] = read_pdf_text_pypdf(path)
+
+    # pdfplumber
+    results["pdfplumber"] = read_pdf_text_pdfplumber(path)
+
+    # pymupdf
+    results["pymupdf"] = read_pdf_text_pymupdf(path)
+
+    print("\n--- Text lengths ---")
+    for name, text in results.items():
+        print(f"{name}: {len(text)} chars, {text.count(chr(10))} lines")
+
+    print("\n--- Samples (first 800 chars) ---")
+    for name, text in results.items():
+        print(f"\n{name.upper()}:\n{'='*40}\n{text[:800]}")
+
+    return results
+
+if __name__ == "__main__":
+    pdf_path = "input_files/416887602.pdf"
+    compare_extractors(pdf_path)
