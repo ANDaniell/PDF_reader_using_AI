@@ -1,5 +1,6 @@
 from pypdf import PdfReader
-
+import pdfplumber
+import fitz
 
 def read_pdf_text_pypdf(path: str) -> str:
     try:
@@ -30,8 +31,6 @@ def read_pdf_text_pypdf(path: str) -> str:
     return result
 
 
-import pdfplumber
-
 def read_pdf_text_pdfplumber(path: str) -> str:
     """
     Читает текст с помощью pdfplumber.
@@ -61,8 +60,6 @@ def read_pdf_text_pdfplumber(path: str) -> str:
 
     return result
 
-
-import fitz  # PyMuPDF
 
 def read_pdf_text_pymupdf(path: str) -> str:
     """
