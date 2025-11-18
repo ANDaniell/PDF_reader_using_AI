@@ -1,0 +1,274 @@
+  
+You are an expert in processing insurance documents. Your task is to **precisely extract data** from the provided PDF and convert it into JSON.  
+Key Requirements:  
+1. Data Accuracy:  
+   - Preserve all original values exactly as written, even if they appear incorrect.  
+   - Do not correct, reformat, or infer missing data.  
+   - When filling out fields and descriptions, avoid using the direct names of applicants, as this is confidential.
+
+2. Special Field Handling:
+   - Information about the primary applicant is at the very beginning of the document, for example, in the Member Information section. For them, set "is_main_applicant": True.
+   - Weight: Extract numeric value only (remove "kg", "lbs" etc.) and convert to integer
+   - Height: 
+     * "heightFt" must be integer (feet portion only, no units)
+     * "heightIn" must be integer (inches portion only, no units)
+   - Gender: Must be strictly "male" or "female" (convert if needed: "m" → "male", "f" → "female")
+   - Medications:
+      "frequency" must be one of: ["Once daily", "Twice daily", "Three times daily", "Four times daily", "Weekly", "Monthly", "Every other day", "At bedtime", "After meals", "Before meals", "As needed"]
+      "dosage": no units
+      "dosage_unit": unit of measurement, eg mg  
+   - Income is usually indicated in the Yearly Income section.
+
+3. Family Members:  
+   - Usually, information about additional applicants is located in the Dependent Information section. If you see that this section exists but no individuals are listed, set the flag "check_it": True.
+   In the "reason_checking" field, briefly describe what is wrong and why this data needs to be checked.
+   - If the PDF lists additional family members under the insurance policy, include them in the `applicants` array.  
+   - Maintain their names, relationships, and other details verbatim.  
+
+4. Medications:  
+   - Extract all mentioned medications, including dosage and frequency, and map them to the `medications` field.  
+   - Retain original spelling/phrasing
+   - In the name field, specify only the name of the medicine
+
+5. Missing Data:  
+   - Use empty strings (`""`), `false`, or empty arrays/objects where fields are absent.  
+   - Never guess or populate placeholder values.  
+
+6. Strict Structure Compliance:  
+   - Adhere **exactly** to the provided JSON schema.  
+   - No additional fields, alterations, or deviations allowed.  
+
+Target JSON Schema:  
+{
+  "uid": "string (optional)",
+  "check_it": bool,
+  "reason_checking": 'string'
+  "applicants": [
+    {
+      "applicant": 0,
+      "is_main_applicant" : bool
+      "firstName": "string (optional)",
+      "lastName": "string (optional)",
+      "midName": "string (optional)",
+      "phone": "string (optional)",
+      "gender": "string (optional)",
+      "dob": "YYYY-MM-DD (optional)",
+      "nicotine": bool (optional),
+      "weight": float (optional), (0 default)
+      "height":int (optional), (0 default)
+      "heightFt": int (optional), (0 default)
+      "heightIn": int (optional) (0 default)
+    }
+  ],
+  "plans": [
+    {
+      "id": int, (0 default)
+      "priceId": int (0 default)
+    }
+  ],
+  "phq": {
+    "treatment": bool,
+    "invalid": bool,
+    "pregnancy": bool,
+    "effectiveDate": "YYYY-MM-DD",
+    "disclaimer": bool,
+    "signature": "string",
+    "medications": [
+      {
+        "applicant": int,
+        "name": "string",
+        "rxcui": "string",
+        "dosage": "string",
+        "dosage_unit": "string",
+        "frequency": "string",
+        "description": "string"
+      }
+    ],
+    "issues": [
+      {
+        "key": "string",
+        "details": [
+          {
+            "key": "string",
+            "description": "string"
+          }
+        ]
+      }
+    ],
+    "conditions": [
+      {
+        "key": "string",
+        "description": "string"
+      }
+    ]
+  },
+  "income": float,
+  "address": {
+    "address1": "string (optional)",
+    "address2": "string (optional)",
+    "city": "string (optional)",
+    "state": "string (optional)",
+    "zipcode": "string (optional)"
+  }
+}  
+
+PDF Content:  
+Member Information
+Name:
+Address:
+Phone:
+Email:
+Date of Birth: 10-07-1970
+Gender: F
+Height: 65"
+Weight: 164 lb
+Employee Coverage
+Network Option
+PHCS
+Plan Option
+3500Classic
+Type of Coverage
+MemberIndividualOnly
+Requested Effective Date
+01/01/2022
+Cancer
+Have your and/or any of your family members listed above seen a medical provider, had treatment or
+receiving ongoing care in the last five years for cancer? (If No, move down to Cardiac or Health
+Disease/Disorder)
+No
+Cardiac or Heart Disease/Disorder
+Have you and/or any of your family members listed above seen a medical provider, had treatment or
+receiving ongoing care for the last five years for Cardiac or Heart Disease/Disorder? (If No, move
+down to Diabetes)
+No
+No
+Diabetes
+Have you and/or any of your family members listed above seen a medical provider, had treatment or
+receiving ongoing care for the last five years for Diabetes? (If No, move down to High Cholesterol)
+No
+High Cholesterol
+Have you and/or any of your family members listed above seen a medical provider, had treatment or
+receiving ongoing care for the last five years for High Cholesterol? (If No, move down to High
+Blood Pressure)
+No
+High Blood Pressure
+Have you and/or any of your family members listed above seen a medical provider, had treatment or
+receiving ongoing care for the last five years for High Blood Pressure? (If No, move down to
+Conditions or Treatment)
+Yes
+If yes, provide most recent reading:
+Aug 10 101/70, Jun 21 112/81
+Additional Details: High Blood Pressure Name of individual, date of onset, treatment plan,
+medications, degree of recovery.
+Lisinopril + HCTZ
+Prescription Medication
+Are you and/or any of your family members listed above taking prescription medications? (If Yes
+provide additional information in the chart below)
+Yes
+Medication 1
+Medication 1
+Who takes medications? (First/Last) Please list all prescription medications. If additional data fields
+are required please contact our support team at 1-844-892-7410.
+Name of Medication
+Lisiniopril HCTZ
+Dosage (mg/mcrg)
+12.5mg -20mg
+Frequency
+once a day
+Prescribed For (Condition)
+high blood pressure
+Medication 2
+Who takes medications? (First/Last)
+Name of Medication
+escitalopram
+Dosage (mg/mcrg)
+10 mg
+Frequency
+once a day
+Prescribed For (Condition)
+anxiety
+Serious Illness Hospitalization Surgery
+Have you and/or any of your family members listed above experienced any of the following related
+to a serious illness in the past 10 years? (Note: We are only looking for a 10 year history)
+Yes
+Please provide additional details for any hospitalization or surgeries (Name of individual, type of
+surgery, ongoing treatments if applicable. If more than one family member please include the
+additiona information above.)
+, oophorectomy, 2017
+Are you and/or any of your family members listed above currently hospitalized or hospital confined?
+No
+Are you and/or any of your family members listed above confined at home, incapacitated or
+incapable of self-support?
+No
+Pregnancy
+Are you and/or any of your family members listed above pregnant?
+No
+Pending Tests Biopsies Procedures Scans Therapies
+Are you or any individual on this application receiving treatment, follow up care, scheduled for or
+awaiting results of any tests, biopsies, procedures, lab work, scans or therapies or have been advised
+to have a test or have been advised of a condition that will require attention in the next twenty-four
+(24) months?
+No
+Past 5 Years
+In the past (5) years has any person enrolling consulted a health care provider, been diagnosed,
+received treatment (including prescription medications), or been hospitalized for Hepatitis?
+No
+In the past five (5) years has any person enrolling consulted a health care provider, been diagnosed,
+received treatment (including prescription medications), or been hospitalized for HIV/AIDS? (If No,
+move down to the next question).
+No
+In the past 5 years has anyone enrolling in the plan had treatment or symptoms of any serious
+medical condition not yet indicated?
+No
+Confirm
+Accept Terms and Conditions
+Yes
+Enter your full name to accept terms and conditions
+Product Information
+Disclosures and Agreements
+PHI Disclosure
+By signing this application, I understand the following: That if any information submitted on this
+form constitutes fraud or there is an intentional misrepresentation of the material fact, the plan may
+rescind healthcare coverage. In any such case, I understand that the plan will return any
+contributions that have previously been paid as to the rescinded coverage, minus claims paid. I
+certify that the statements are true and correct to the best of my knowledge. I understand that this
+form is used for information purposes only and does not bind coverage. I understand the Conquer
+Benefits gathers this information for statistical and actuarial uses only and it will not be used in
+connection with decisions or actions regarding employment. That if I am a resident in Michigan, I do
+not have to provide information regarding height or weight, and that this in compliance with
+requirements for GINA. That I have read the Client Privacy Notification provided to me in this
+application. That as a prospective member, I have the right to request restrictions on how my
+protected health information is used, and that the Conquer Benefits is not required by law to grant
+this request, but if the request is granted, the Conquer Benefits is bound by this agreement. I also
+understand that I have the right to revoke this consent in writing, except to the extent the Conquer
+Benefits has already used or disclosed the protected health information in reliance upon my consent.
+I further understand that the Conquer Benefits will notify the member of any health or enrollment
+related changes that occur after signing this form, up to the effective date of coverage.
+By signing this PHQ, I acknowledge that I am self-employed and upon approval and payment of
+premium, I will automatically become a passive, non-voting certificate class member of IHA
+Services, LLC., a Manager Managed, LLC. This certificate of membership will remain in force for a
+long as I continue to participate in services or benefits offered through IHA Services, LLC. I further
+understand that while I have certificate membership in IHA Services, LLC., that affords me no
+managerial status, voting rights or rights to profits or liabilities. I grant full managerial duties to the
+duly appointed managers of IHA Services, LLC., a manager-managed LLC. Additionally, by
+becoming a Certificate Member, I acknowledge that I will only have access to consulting services
+and products specifically designed for IHA Services, LLC. members. Member understands and
+agrees the Plan may modify health care fees or be terminated based on Member's experience and/or
+utilization. Any such modification or termination must be presented to the member 60 days prior to
+the members renewal date.
+Client Privacy Notification
+Thank you for completing the requested information. Any information, including non-public
+personal health information, such as name, address and social security number, including detailed
+protected health information provided will be used for the sole purpose of providing a risk
+assessment to the health plan that will provide a health care benefit quote to your employer. The
+Conquer Benefits' actuary is a legally contracted underwriter acting as a Business Associate to the
+Conquer Benefits and is subject to certain provisions of the Health Insurance Portability and
+Accountability Act of 1996 (HIPAA) regulations. The Conquer Benefits' actuary and underwriter
+will not sell, license, transmit or disclose this information outside of their offices except as: a)
+necessary for them to provide the services on behalf of Conquer Benefits, b) expressly authorized by
+you, c) necessary for backup documentation purposes, or d) required by law.
+Electronic Signature
+By electronically acknowledging this authorization, I acknowledge that I have read and agree to the
+terms and conditions set forth in this agreement.  
+
+Output **only the raw JSON object** without explanations or annotations.  

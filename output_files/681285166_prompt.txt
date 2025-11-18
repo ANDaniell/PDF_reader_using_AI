@@ -1,0 +1,243 @@
+  
+You are an expert in processing insurance documents. Your task is to **precisely extract data** from the provided PDF and convert it into JSON.  
+Key Requirements:  
+1. Data Accuracy:  
+   - Preserve all original values exactly as written, even if they appear incorrect.  
+   - Do not correct, reformat, or infer missing data.  
+   - When filling out fields and descriptions, avoid using the direct names of applicants, as this is confidential.
+
+2. Special Field Handling:
+   - Information about the primary applicant is at the very beginning of the document, for example, in the Member Information section. For them, set "is_main_applicant": True.
+   - Weight: Extract numeric value only (remove "kg", "lbs" etc.) and convert to integer
+   - Height: 
+     * "heightFt" must be integer (feet portion only, no units)
+     * "heightIn" must be integer (inches portion only, no units)
+   - Gender: Must be strictly "male" or "female" (convert if needed: "m" → "male", "f" → "female")
+   - Medications:
+      "frequency" must be one of: ["Once daily", "Twice daily", "Three times daily", "Four times daily", "Weekly", "Monthly", "Every other day", "At bedtime", "After meals", "Before meals", "As needed"]
+      "dosage": no units
+      "dosage_unit": unit of measurement, eg mg  
+   - Income is usually indicated in the Yearly Income section.
+
+3. Family Members:  
+   - Usually, information about additional applicants is located in the Dependent Information section. If you see that this section exists but no individuals are listed, set the flag "check_it": True.
+   In the "reason_checking" field, briefly describe what is wrong and why this data needs to be checked.
+   - If the PDF lists additional family members under the insurance policy, include them in the `applicants` array.  
+   - Maintain their names, relationships, and other details verbatim.  
+
+4. Medications:  
+   - Extract all mentioned medications, including dosage and frequency, and map them to the `medications` field.  
+   - Retain original spelling/phrasing
+   - In the name field, specify only the name of the medicine
+
+5. Missing Data:  
+   - Use empty strings (`""`), `false`, or empty arrays/objects where fields are absent.  
+   - Never guess or populate placeholder values.  
+
+6. Strict Structure Compliance:  
+   - Adhere **exactly** to the provided JSON schema.  
+   - No additional fields, alterations, or deviations allowed.  
+
+Target JSON Schema:  
+{
+  "uid": "string (optional)",
+  "check_it": bool,
+  "reason_checking": 'string'
+  "applicants": [
+    {
+      "applicant": 0,
+      "is_main_applicant" : bool
+      "firstName": "string (optional)",
+      "lastName": "string (optional)",
+      "midName": "string (optional)",
+      "phone": "string (optional)",
+      "gender": "string (optional)",
+      "dob": "YYYY-MM-DD (optional)",
+      "nicotine": bool (optional),
+      "weight": float (optional), (0 default)
+      "height":int (optional), (0 default)
+      "heightFt": int (optional), (0 default)
+      "heightIn": int (optional) (0 default)
+    }
+  ],
+  "plans": [
+    {
+      "id": int, (0 default)
+      "priceId": int (0 default)
+    }
+  ],
+  "phq": {
+    "treatment": bool,
+    "invalid": bool,
+    "pregnancy": bool,
+    "effectiveDate": "YYYY-MM-DD",
+    "disclaimer": bool,
+    "signature": "string",
+    "medications": [
+      {
+        "applicant": int,
+        "name": "string",
+        "rxcui": "string",
+        "dosage": "string",
+        "dosage_unit": "string",
+        "frequency": "string",
+        "description": "string"
+      }
+    ],
+    "issues": [
+      {
+        "key": "string",
+        "details": [
+          {
+            "key": "string",
+            "description": "string"
+          }
+        ]
+      }
+    ],
+    "conditions": [
+      {
+        "key": "string",
+        "description": "string"
+      }
+    ]
+  },
+  "income": float,
+  "address": {
+    "address1": "string (optional)",
+    "address2": "string (optional)",
+    "city": "string (optional)",
+    "state": "string (optional)",
+    "zipcode": "string (optional)"
+  }
+}  
+
+PDF Content:  
+Member Information
+Name:
+Address:
+Phone:
+Email:
+Date of Birth: 10-19-1971
+Gender: M
+Height: 71"
+Weight: 175 lb
+Dependent Information
+Name RelationshipDate of Birth Gender Height Weight SSN
+1. Conditions or Treatments
+Have you and/or any of your family members listed above, seen a medical provider, had treatment
+recommended, received care, told you need to be treated for any of the following, had any diagnostic
+testing, surgeries or have been hospitalized for any of the following conditions listed below.
+None of the above
+In the past 5 years, have you or any of your dependents included on this enrollment form been
+diagnosed or treated for any condition(s) not identified above, been advised of the necessity or
+possibility of any future hospitalization, treatment, testing or surgery? (If yes, please provide details
+below)
+0
+Are you and/or any of your family members listed above confined at home, incapacitated or
+incapable of self-support, currently hospitalized or hospital confined?
+No
+2. Pharmacy Assistance Program Income Qualification
+Yearly Income
+$106001-$124160
+3. Prescription Medications
+3. Prescription Medications
+Are you and/or any of your family members listed above taking prescription medications?
+1
+Prescription Medication Details:
+: xanax for anxiety .5 mg onset 2019 : Ambien for sleep as needed
+4. Pregnancy
+Are you and/or any of your dependents included on this form currently pregnant?
+No
+5. Coverage Type
+Type of Coverage
+Member/Individual plus Family
+Requested Effective Date
+09/01/2023
+Product Information
+Request A Quote
+$0.00 one-time for Pending UW Quote
+Terms and Conditions for Request A Quote
+Authorization
+Submitting this application is NOT an automatic enrollment. This is a request to receive an underwritten quote.
+PHI Disclosure
+By signing this application, I certify that the statements are true and correct to the best of my knowledge. I
+understand the following: If any information submitted on this form constitutes fraud or there is an intentional
+misrepresentation of the material fact, the plan may rescind healthcare coverage. In any such case, I understand that
+the plan will return any contributions that have previously been paid as to the rescinded coverage, minus claims paid.
+I understand that this form is used for information purposes only and does not bind coverage. I understand that The
+I understand that this form is used for information purposes only and does not bind coverage. I understand that The
+Plan gathers this information for statistical and actuarial uses only and it will not be used in connection with decisions
+or actions regarding employment. If I am a resident of Michigan, I do not have to provide information regarding
+height or weight, and this is in compliance with the requirements for GINA. I have read the Client Privacy Notification
+provided to me in this application. As a prospective member, I have the right to request restrictions on how my
+protected health information is used, and that the Plan is not required by law to grant this request, but if the request
+is granted, the Plan is bound by this agreement. I also understand that I have the right to revoke this consent in
+writing, except to the extent that The Plan has already used or disclosed the protected health information in reliance
+upon my consent. I further understand that it is my responsibility to notify the plan of any health or
+enrollment-related changes that occur after signing this form, up to the effective date of coverage. By signing this
+PHQ, I acknowledge that upon approval and payment of my premium, I will automatically become a passive,
+non-voting certificate class member of IHA Services, LLC., a Manager Managed, LLC. This certificate of membership
+will remain in force for as long as I continue to participate in services or benefits offered through IHA Services, LLC. I
+further understand that while I have certificate membership in IHA Services, LLC., that affords me no managerial
+status, voting rights, or rights to profits or liabilities. I grant full managerial duties to the duly appointed managers of
+IHA Services, LLC., a manager-managed LLC. Additionally, by becoming a non-voting certificate member, I
+acknowledge that I will only have access to consulting services and products specifically designed for IHA Services,
+LLC. members. As a Member, I understand and agree the Plan may modify health care fees or can terminate based on
+Member's experience and/or utilization. Any such modification or termination must be presented to the member 30
+days prior to the member's renewal date.
+Client Privacy Notification
+Thank you for completing the requested information. Any information, including non-public personal health
+information, such as name, address, and social security number, including detailed protected health information
+provided will be used for the sole purpose of providing a risk assessment to the health plan that will provide a health
+care benefit quote to your employer. The Plan actuary is a legally contracted underwriter acting as a Business
+Associate to the Plan and is subject to certain provisions of the Health Insurance Portability and Accountability Act of
+1996 (HIPAA) regulations. The Plan's actuary and underwriter will not sell, license, transmit or disclose this
+information outside of their offices except as necessary for them.
+Disclosures and Agreements
+PHI Disclosure
+By signing this application, I understand the following: That if any information submitted on this
+form constitutes fraud or there is an intentional misrepresentation of the material fact, the plan may
+rescind healthcare coverage. In any such case, I understand that the plan will return any
+contributions that have previously been paid as to the rescinded coverage, minus claims paid. I
+certify that the statements are true and correct to the best of my knowledge. I understand that this
+form is used for information purposes only and does not bind coverage. I understand the Conquer
+Benefits gathers this information for statistical and actuarial uses only and it will not be used in
+connection with decisions or actions regarding employment. That if I am a resident in Michigan, I do
+not have to provide information regarding height or weight, and that this in compliance with
+requirements for GINA. That I have read the Client Privacy Notification provided to me in this
+application. That as a prospective member, I have the right to request restrictions on how my
+protected health information is used, and that the Conquer Benefits is not required by law to grant
+this request, but if the request is granted, the Conquer Benefits is bound by this agreement. I also
+understand that I have the right to revoke this consent in writing, except to the extent the Conquer
+Benefits has already used or disclosed the protected health information in reliance upon my consent.
+I further understand that the Conquer Benefits will notify the member of any health or enrollment
+related changes that occur after signing this form, up to the effective date of coverage.
+By signing this PHQ, I acknowledge that I am self-employed and upon approval and payment of
+premium, I will automatically become a passive, non-voting certificate class member of IHA
+Services, LLC., a Manager Managed, LLC. This certificate of membership will remain in force for a
+long as I continue to participate in services or benefits offered through IHA Services, LLC. I further
+understand that while I have certificate membership in IHA Services, LLC., that affords me no
+managerial status, voting rights or rights to profits or liabilities. I grant full managerial duties to the
+duly appointed managers of IHA Services, LLC., a manager-managed LLC. Additionally, by
+becoming a Certificate Member, I acknowledge that I will only have access to consulting services
+and products specifically designed for IHA Services, LLC. members. Member understands and
+agrees the Plan may modify health care fees or be terminated based on Member's experience and/or
+utilization. Any such modification or termination must be presented to the member 60 days prior to
+the members renewal date.
+Client Privacy Notification
+Thank you for completing the requested information. Any information, including non-public
+personal health information, such as name, address and social security number, including detailed
+protected health information provided will be used for the sole purpose of providing a risk
+assessment to the health plan that will provide a health care benefit quote to your employer. The
+Conquer Benefits' actuary is a legally contracted underwriter acting as a Business Associate to the
+Conquer Benefits and is subject to certain provisions of the Health Insurance Portability and
+Accountability Act of 1996 (HIPAA) regulations. The Conquer Benefits' actuary and underwriter
+will not sell, license, transmit or disclose this information outside of their offices except as: a)
+necessary for them to provide the services on behalf of Conquer Benefits, b) expressly authorized by
+you, c) necessary for backup documentation purposes, or d) required by law.
+Electronic Signature
+By electronically acknowledging this authorization, I acknowledge that I have read and agree to the
+terms and conditions set forth in this agreement.  
+
+Output **only the raw JSON object** without explanations or annotations.  

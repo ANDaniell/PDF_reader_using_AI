@@ -1,0 +1,5 @@
+uid,check_it,reason_checking,status,true_tier,applicant_id,is_main_applicant,firstName,lastName,midName,phone,gender,dob,nicotine,weight,height,heightFt,heightIn,medications,dosages,dosage_unit,frequencies,descriptions,reason_checking_logs,reason_checking_med,reason_checking_dosage_unit
+044551191,False,,,,0,True,,,,,female,1963-02-26,False,195,65,5,5,,,,,,,,
+416887602,False,,,,0,True,,,,,female,1970-10-07,False,164,65,5,5,Lisiniopril HCTZ|escitalopram,12.5 -20|10,mg|mg,Once daily|Once daily,high blood pressure|anxiety,,,
+681285166,True,Dependent Information section exists but no individuals are listed.,,,0,True,,,,,male,1971-10-19,False,175,71,5,11,xanax|Ambien,0.5|,mg|,|As needed,xanax for anxiety .5 mg onset 2019|Ambien for sleep as needed,,,
+681846065,True,Dependent Information section exists but no individuals are listed.,,,0,True,,,,,female,1960-04-09,False,145,64,5,4,rosuvastatin|Ibandronate,|,|,|,Take rosuvastatin to control cholesterol.|Just started taking Ibandronate for low bone density as prescribed by doctor.,,,

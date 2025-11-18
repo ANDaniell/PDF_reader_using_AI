@@ -1,0 +1,66 @@
+{
+  "uid": "681285166",
+  "check_it": true,
+  "reason_checking": "Dependent Information section exists but no individuals are listed.",
+  "applicants": [
+    {
+      "applicant": 0,
+      "is_main_applicant": true,
+      "firstName": "",
+      "lastName": "",
+      "midName": "",
+      "phone": "",
+      "gender": "male",
+      "dob": "1971-10-19",
+      "nicotine": false,
+      "weight": 175,
+      "height": 71,
+      "heightFt": 5,
+      "heightIn": 11
+    }
+  ],
+  "plans": [
+    {
+      "id": 0,
+      "priceId": 0
+    }
+  ],
+  "phq": {
+    "treatment": false,
+    "invalid": false,
+    "pregnancy": false,
+    "effectiveDate": "2023-09-01",
+    "disclaimer": false,
+    "signature": "",
+    "medications": [
+      {
+        "applicant": 0,
+        "name": "xanax",
+        "rxcui": "",
+        "dosage": "0.5",
+        "dosage_unit": "mg",
+        "frequency": "",
+        "description": "xanax for anxiety .5 mg onset 2019"
+      },
+      {
+        "applicant": 0,
+        "name": "Ambien",
+        "rxcui": "",
+        "dosage": "",
+        "dosage_unit": "",
+        "frequency": "As needed",
+        "description": "Ambien for sleep as needed"
+      }
+    ],
+    "issues": [],
+    "conditions": []
+  },
+  "income": 106001,
+  "address": {
+    "address1": "",
+    "address2": "",
+    "city": "",
+    "state": "",
+    "zipcode": ""
+  }
+}
