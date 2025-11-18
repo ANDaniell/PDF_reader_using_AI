@@ -1,0 +1,108 @@
+{
+    "uid": "416887602",
+    "check_it": false,
+    "reason_checking": "",
+    "applicants": [
+        {
+            "applicant": 0,
+            "is_main_applicant": true,
+            "firstName": "",
+            "lastName": "",
+            "midName": "",
+            "phone": "",
+            "gender": "female",
+            "dob": "1970-10-07",
+            "nicotine": false,
+            "weight": 164,
+            "height": 65,
+            "heightFt": 5,
+            "heightIn": 5
+        }
+    ],
+    "plans": [
+        {
+            "id": 0,
+            "priceId": 0
+        }
+    ],
+    "phq": {
+        "treatment": false,
+        "invalid": false,
+        "pregnancy": false,
+        "effectiveDate": "2022-01-01",
+        "disclaimer": true,
+        "signature": "",
+        "medications": [
+            {
+                "applicant": 0,
+                "name": "Lisiniopril HCTZ",
+                "rxcui": "",
+                "dosage": "12.5-20",
+                "dosage_unit": "mg",
+                "frequency": "Once daily",
+                "description": "high blood pressure"
+            },
+            {
+                "applicant": 0,
+                "name": "escitalopram",
+                "rxcui": "",
+                "dosage": "10",
+                "dosage_unit": "mg",
+                "frequency": "Once daily",
+                "description": "anxiety"
+            }
+        ],
+        "issues": [
+            {
+                "key": "High Blood Pressure",
+                "details": [
+                    {
+                        "key": "readings",
+                        "description": "Aug 10 101/70, Jun 21 112/81"
+                    }
+                ]
+            },
+            {
+                "key": "Serious Illness Hospitalization Surgery",
+                "details": [
+                    {
+                        "key": "surgery",
+                        "description": "oophorectomy, 2017"
+                    }
+                ]
+            }
+        ],
+        "conditions": [
+            {
+                "key": "Cancer",
+                "description": "No"
+            },
+            {
+                "key": "Cardiac or Heart Disease/Disorder",
+                "description": "No"
+            },
+            {
+                "key": "Diabetes",
+                "description": "No"
+            },
+            {
+                "key": "High Cholesterol",
+                "description": "No"
+            },
+            {
+                "key": "High Blood Pressure",
+                "description": "Yes"
+            }
+        ]
+    },
+    "income": 0,
+    "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "zipcode": ""
+    },
+    "TrueTier": "Tier 3.0",
+    "status": "accepted"
+}
