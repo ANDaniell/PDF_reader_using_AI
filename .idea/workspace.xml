@@ -4,8 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e730fef3-e3b5-4eb5-9000-9ba853739a7b" name="Changes" comment="make prompt for open ai">
-      <change afterPath="$PROJECT_DIR$/tables.py" afterDir="false" />
+    <list default="true" id="e730fef3-e3b5-4eb5-9000-9ba853739a7b" name="Changes" comment="Correctly configure sending and receiving messages in openAI + started working on tables">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
@@ -95,7 +94,15 @@
       <option name="project" value="LOCAL" />
       <updated>1763486265189</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Correctly configure sending and receiving messages in openAI + started working on tables">
+      <option name="closed" value="true" />
+      <created>1763490432947</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1763490432947</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -124,6 +131,7 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="ready for reading pdf without OCR. best option as lib for that - pdfplumber." />
     <MESSAGE value="make prompt for open ai" />
-    <option name="LAST_COMMIT_MESSAGE" value="make prompt for open ai" />
+    <MESSAGE value="Correctly configure sending and receiving messages in openAI + started working on tables" />
+    <option name="LAST_COMMIT_MESSAGE" value="Correctly configure sending and receiving messages in openAI + started working on tables" />
   </component>
 </project>

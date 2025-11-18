@@ -61,26 +61,23 @@ def process_pdf(pdf_path: str, client: OpenAI, output_dir: str):
 
     base_name = os.path.splitext(os.path.basename(pdf_path))[0]
 
-    print(f"\n=== Обрабатываем файл: {pdf_path} ===")
-    print("Читаем PDF через pdfplumber...")
+    print(f"\n=== Обрабатываем PDF через pdfplumber: {pdf_path} ===")
 
-    # 1. Читаем PDF
-    pdf_text = read_pdf_text_pdfplumber(pdf_path)
 
-    # 2. Строим промпт
-    prompt_text = build_prompt(pdf_text)
+    pdf_text = read_pdf_text_pdfplumber(pdf_path) # Читаем PDF
+    prompt_text = build_prompt(pdf_text) # Строим промпт
 
-    # 3. Сохраняем промпт (для отладки)
+    # Сохраняем промпт (для отладки)
     prompt_output_path = os.path.join(output_dir, f"{base_name}_prompt.txt")
     with open(prompt_output_path, "w", encoding="utf-8") as f:
         f.write(prompt_text)
     print(f"Промпт сохранён в: {prompt_output_path}")
 
-    # 4. Отправляем запрос в модель
+    # Отправляем запрос в модель
     print("Отправляем запрос в OpenAI...")
     json_str = run_extraction_prompt(prompt_text, client)
 
-    # 5. Конвертируем строку → JSON (dict)
+    # Конвертируем строку → JSON (dict)
     try:
         json_obj = json.loads(json_str)
     except json.JSONDecodeError:
@@ -91,7 +88,7 @@ def process_pdf(pdf_path: str, client: OpenAI, output_dir: str):
             f.write(json_str)
         return
 
-    # 6. Сохраняем красивый JSON
+    # Сохраняем красивый JSON
     response_output_path = os.path.join(output_dir, f"{base_name}_response.json")
     with open(response_output_path, "w", encoding="utf-8") as f:
         json.dump(json_obj, f, ensure_ascii=False, indent=2)
@@ -110,39 +107,29 @@ def main():
 
     client = OpenAI(api_key=api_key)
 
-    # PDF-имя
-    if len(sys.argv) > 1:
-        pdf_path = sys.argv[1]
-    else:
-        pdf_path = os.path.join("input_files", "416887602.pdf")
-
-    if not os.path.exists(pdf_path):
-        raise FileNotFoundError(f"PDF не найден: {pdf_path}")
-
-    print(f"Читаем PDF: {pdf_path}")
-    pdf_text = read_pdf_text_pdfplumber(pdf_path)
-
-    # ----- сохраняем ПОЛНЫЙ ПРОМПТ -----
+    input_dir = os.getenv("PDF_INPUT_DIR", "input_files")
     output_dir = os.getenv("OUTPUT_DIR", "output_files")
     os.makedirs(output_dir, exist_ok=True)
-    base_name = os.path.splitext(os.path.basename(pdf_path))[0]
-    prompt_text = build_prompt(pdf_text)
-    prompt_output_path = os.path.join(output_dir, f"{base_name}_prompt.txt")
-    with open(prompt_output_path, "w", encoding="utf-8") as f:
-        f.write(prompt_text)
 
-    print(f"Промпт сохранён в: {prompt_output_path}")
+    # Собираем список PDF из папки
+    if len(sys.argv) > 1:
+        # Если передали конкретный файл в аргумент — обрабатываем только его
+        pdf_paths = [sys.argv[1]]
+    else:
+        # Иначе берём все PDF из input_dir
+        pdf_paths = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.lower().endswith(".pdf")]
 
-    # ----- отправляем запрос в OpenAI -----
-    print("Отправляем запрос в OpenAI...")
-    json_response = run_extraction_prompt(prompt_text, client)
+    if not pdf_paths:
+        raise FileNotFoundError(f"Не найдено ни одного PDF в {input_dir}")
 
-    # ----- сохраняем JSON-ответ -----
-    response_output_path = os.path.join(output_dir, f"{base_name}_response.txt")
-    with open(response_output_path, "w", encoding="utf-8") as f:
-        f.write(json_response)
+    print("Найдены PDF:")
+    for p in pdf_paths:
+        print("  -", p)
 
-    print(f"Ответ сохранён в: {response_output_path}")
+    # Обрабатываем каждый PDF
+    for pdf_path in pdf_paths:
+        process_pdf(pdf_path, client, output_dir)
+
 
 
 if __name__ == "__main__":
