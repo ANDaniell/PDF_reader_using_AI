@@ -1,13 +1,20 @@
 from pypdf import PdfReader
 import pdfplumber
 import fitz
+from logging_config import setup_logging, get_logger
+from typing import Dict, Any
+from pypdf import PdfReader
+
+logger = get_logger(__name__)
 
 def read_pdf_text_pypdf(path: str) -> str:
     try:
         reader = PdfReader(path)
     except FileNotFoundError:
+        logger.error(f"PDF file not found: {path}")
         raise FileNotFoundError(f"PDF file not found: {path}")
     except Exception as e:
+        logger.exception(f"Cannot open PDF: {e}")
         raise ValueError(f"Cannot open PDF: {e}")
 
     all_text = []
@@ -16,6 +23,7 @@ def read_pdf_text_pypdf(path: str) -> str:
         try:
             text = page.extract_text()
         except Exception as e:
+            logger.exception(f"Failed to extract text on page {i}: {e}")
             raise ValueError(f"Failed to extract text on page {i}: {e}")
 
         if text:
@@ -26,6 +34,7 @@ def read_pdf_text_pypdf(path: str) -> str:
     result = "\n".join(all_text)
 
     if not result.strip():
+        logger.error(f"PDF contains no readable text: {path}")
         raise ValueError(f"PDF contains no readable text: {path}")
 
     return result
@@ -44,18 +53,22 @@ def read_pdf_text_pdfplumber(path: str) -> str:
                 try:
                     text = page.extract_text() or ""
                 except Exception as e:
+                    logger.error(f"pdfplumber: error reading page {i}: {e}")
                     raise ValueError(f"pdfplumber: error reading page {i}: {e}")
 
                 pages_text.append(text)
 
     except FileNotFoundError:
+        logger.error(f"PDF file not found: {path}")
         raise FileNotFoundError(f"PDF file not found: {path}")
     except Exception as e:
+        logger.exception(f"pdfplumber: cannot open PDF {path}: {e}")
         raise ValueError(f"pdfplumber: cannot open PDF {path}: {e}")
 
     result = "\n".join(pages_text)
 
     if not result.strip():
+        logger.error(f"pdfplumber: PDF contains no readable text: {path}")
         raise ValueError(f"pdfplumber: PDF contains no readable text: {path}")
 
     return result
@@ -69,8 +82,10 @@ def read_pdf_text_pymupdf(path: str) -> str:
     try:
         doc = fitz.open(path)
     except FileNotFoundError:
+        logger.error(f"PDF file not found: {path}")
         raise FileNotFoundError(f"PDF file not found: {path}")
     except Exception as e:
+        logger.error(f"PyMuPDF: cannot open PDF {path}: {e}")
         raise ValueError(f"PyMuPDF: cannot open PDF {path}: {e}")
 
     pages_text = []
@@ -79,14 +94,12 @@ def read_pdf_text_pymupdf(path: str) -> str:
         try:
             text = page.get_text("text")  # "text" = "как видит человек"
         except Exception as e:
+            logger.error(f"PyMuPDF: error reading page {i}: {e}")
             raise ValueError(f"PyMuPDF: error reading page {i}: {e}")
 
         pages_text.append(text)
 
     return "\n".join(pages_text)
-
-from typing import Dict, Any
-from pypdf import PdfReader
 
 
 def extract_form_fields_pypdf(path: str) -> Dict[str, Any]:
@@ -155,5 +168,10 @@ def compare_extractors(path: str):
     return results
 
 if __name__ == "__main__":
+    setup_logging()
+    logger = get_logger(__name__)
+
+    logger.info("Приложение запущено (reader.py)")
+
     pdf_path = "input_files/416887602.pdf"
     compare_extractors(pdf_path)

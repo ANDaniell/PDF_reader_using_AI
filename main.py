@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import re
 from reader import read_pdf_text_pdfplumber
 from prompt import prompt_template, target_json_format
+from logging_config import setup_logging, get_logger
 
 def build_prompt(pdf_text: str) -> str:
     """
@@ -48,8 +49,6 @@ def run_extraction_prompt(pdf_text: str, client: OpenAI, uid: str) -> str:
         json_str,
         count=1
     )
-
-    # В новой версии клиента content — это строка
     return json_str
 
 def process_pdf(pdf_path: str, client: OpenAI, output_dir: str):
@@ -63,12 +62,13 @@ def process_pdf(pdf_path: str, client: OpenAI, output_dir: str):
     """
 
     if not os.path.exists(pdf_path):
-        print(f"Файл не найден: {pdf_path}")
+        logger.error("Файл не найден: %s", pdf_path)
+
         return
 
     base_name = os.path.splitext(os.path.basename(pdf_path))[0]
 
-    print(f"\n=== Обрабатываем PDF через pdfplumber: {pdf_path} ===")
+    logger.info(f"\n=== Обрабатываем PDF через pdfplumber: {pdf_path} ===")
 
 
     pdf_text = read_pdf_text_pdfplumber(pdf_path) # Читаем PDF
@@ -76,32 +76,44 @@ def process_pdf(pdf_path: str, client: OpenAI, output_dir: str):
 
     # Сохраняем промпт (для отладки)
     prompt_output_path = os.path.join(output_dir, f"{base_name}_prompt.txt")
-    with open(prompt_output_path, "w", encoding="utf-8") as f:
-        f.write(prompt_text)
-    print(f"Промпт сохранён в: {prompt_output_path}")
+    try:
+        with open(prompt_output_path, "w", encoding="utf-8") as f:
+            f.write(prompt_text)
+            logger.info(f"Промпт сохранён в: {prompt_output_path}" )
+    except Exception:
+        logger.exception(f"Не удалось сохранить промпт в файл: {prompt_output_path}")
 
     # Отправляем запрос в модель
-    print("Отправляем запрос в OpenAI...")
     uid = os.path.splitext(os.path.basename(pdf_path))[0]
+    logger.info(f"Отправляем запрос в OpenAI для файла: {pdf_path} (uid={uid})")
     json_str = run_extraction_prompt(prompt_text, client, uid)
 
     # Конвертируем строку → JSON (dict)
     try:
         json_obj = json.loads(json_str)
     except json.JSONDecodeError:
-        print("модель вернула невалидный JSON.")
-        print("Сохраняю как raw-response.txt для отладки.")
+        logger.exception(
+            f"Модель вернула невалидный JSON для файла {pdf_path}. "
+            f"Сохраняю raw-response для отладки."
+        )
         bad_path = os.path.join(output_dir, f"{base_name}_BAD_RESPONSE.txt")
-        with open(bad_path, "w", encoding="utf-8") as f:
-            f.write(json_str)
+        try:
+            with open(bad_path, "w", encoding="utf-8") as f:
+                f.write(json_str)
+            logger.info(f"Сырой ответ модели сохранён в: {bad_path}")
+        except Exception:
+            logger.exception(f"Не удалось сохранить сырой ответ модели в файл: {bad_path}")
         return
 
     # Сохраняем красивый JSON
     response_output_path = os.path.join(output_dir, f"{base_name}_response.json")
-    with open(response_output_path, "w", encoding="utf-8") as f:
-        json.dump(json_obj, f, ensure_ascii=False, indent=2)
+    try:
+        with open(response_output_path, "w", encoding="utf-8") as f:
+            json.dump(json_obj, f, ensure_ascii=False, indent=2)
+        logger.info(f"JSON сохранён в: {response_output_path}")
+    except Exception:
+        logger.exception(f"Не удалось сохранить JSON-ответ в файл: {response_output_path}")
 
-    print(f"JSON сохранён в: {response_output_path}")
     return json_obj
 
 
@@ -111,9 +123,11 @@ def main():
 
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
+        logger.critical("OPENAI_API_KEY не указан в .env")
         raise RuntimeError("OPENAI_API_KEY не указан в .env")
 
     client = OpenAI(api_key=api_key)
+    logger.info("Клиент OpenAI инициализирован")
 
     input_dir = os.getenv("PDF_INPUT_DIR", "input_files")
     output_dir = os.getenv("OUTPUT_DIR", "output_files")
@@ -128,6 +142,7 @@ def main():
         pdf_paths = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.lower().endswith(".pdf")]
 
     if not pdf_paths:
+        logger.error(f"Не найдено ни одного PDF в директории: {input_dir}")
         raise FileNotFoundError(f"Не найдено ни одного PDF в {input_dir}")
 
     print("Найдены PDF:")
@@ -141,6 +156,11 @@ def main():
 
 
 if __name__ == "__main__":
+    setup_logging()
+    logger = get_logger(__name__)
+
+    logger.info("Приложение запущено (main.py)")
+
     main()
 
 

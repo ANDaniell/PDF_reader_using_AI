@@ -1,0 +1,7 @@
+uid,applicant_id,medication,dosage,dosage_unit,standardized_dose,standardized_unit,check_it,reason_checking,reason_checking_dosage_unit,frequency,description
+416887602,0,Lisiniopril HCTZ,12.5 -20,mg,12.5 -20,mg,False,,,Once daily,high blood pressure
+416887602,0,escitalopram,10,mg,10,mg,False,,,Once daily,anxiety
+681285166,0,xanax,0.5,mg,0.5,mg,True,Dependent Information section exists but no individuals are listed.,,,xanax for anxiety .5 mg onset 2019
+681285166,0,Ambien,,,,,True,Dependent Information section exists but no individuals are listed.,,As needed,Ambien for sleep as needed
+681846065,0,rosuvastatin,,,,,True,Dependent Information section exists but no individuals are listed.,,,Take rosuvastatin to control cholesterol.
+681846065,0,Ibandronate,,,,,True,Dependent Information section exists but no individuals are listed.,,,Just started taking Ibandronate for low bone density as prescribed by doctor.
