@@ -11,6 +11,20 @@ logger = get_logger(__name__)
 MAIN_TABLE_FILENAME = "applications.csv"
 MEDS_TABLE_FILENAME = "medications.csv"
 
+VALID_UNITS = {"mg", "mg/ml"}
+
+
+def split_values(cell: object) -> List[str]:
+    """
+    Разбивает строку вида "a|b|c" в список.
+    Учитывает NaN/
+    """
+    if pd.isna(cell): return []
+    s = str(cell).strip()
+    if not s: return []
+
+    return [x.strip() for x in s.split(" | ")]
+
 
 def safe_join(values, placeholder="NaN"):
     """
@@ -31,6 +45,7 @@ def safe_join(values, placeholder="NaN"):
 
     return " | ".join(cleaned) if has_real_value else pd.NA
 
+
 # ----------------- нормализация дозировки ----------------- #
 
 def normalize_dosage_value(dosage: str, dosage_unit: str):
@@ -46,7 +61,7 @@ def normalize_dosage_value(dosage: str, dosage_unit: str):
         return None, None
 
     dosage_unit = dosage_unit.lower().strip()
-    m = re.search(r"([\d\.]+)", dosage)
+    m = re.search(r"([\d\.]+)", dosage.strip())
     if not m:
         logger.warning(f"normalize_dosage_value: не найдено численное значение в '{dosage}'")
         return None, None
@@ -78,15 +93,24 @@ def build_main_records(data: Dict[str, Any]) -> List[Dict[str, Any]]:
     uid = data.get("uid", "")
     check_it = data.get("check_it", False)
     reason_checking = data.get("reason_checking", "")
-
+    reason_checking_logs = ""  # TODO: сделать в дальнейшем передачу ошибок при чтении файлов, или некорректных ответов от OpenAi
     # в JSON статус и true_tier нет — заполняем пустыми
     status = data.get("status", "")
     true_tier = data.get("true_tier", "")
 
     applicants = data.get("applicants", [])
     if not applicants:
-        logger.warning(f"JSON не содержит списка applicants для uid={uid}, создаю пустого applicant")
-        applicants = [{}]
+        logger.warning(f"JSON не содержит списка applicants для uid={uid}")
+        # если поле отсутствует ИЛИ не список
+        if not isinstance(applicants, list):
+            reason_checking_logs = "отсутствует или повреждено поле applicants"
+            check_it = True
+            applicants = []
+
+        # если список есть, но пустой
+        elif len(applicants) == 0:
+            reason_checking_logs = "поле applicants пустое (модель не вернула аппликантов)"
+            check_it = True
 
     # медикаменты внутри phq.medications
     phq = data.get("phq", {})
@@ -97,9 +121,8 @@ def build_main_records(data: Dict[str, Any]) -> List[Dict[str, Any]]:
     default_applicant_id = applicants[0].get("applicant", 0) if applicants else 0
 
     # reason_checking_logs / _med / _dosage_unit сейчас отсутствуют в JSON
-    reason_checking_logs = data.get("reason_checking_logs", "")
-    reason_checking_med = data.get("reason_checking_med", "")
-    reason_checking_dosage_unit = data.get("reason_checking_dosage_unit", "")
+
+    reason_checking_med = ""  # TODO: сделать в дальнейшем список медикаментов и проверять на принадлежность?
 
     records: List[Dict[str, Any]] = []
 
@@ -123,10 +146,28 @@ def build_main_records(data: Dict[str, Any]) -> List[Dict[str, Any]]:
         )
 
         medications = safe_join([m.get("name", "") for m in applicant_meds])
-        dosages = safe_join([m.get("dosage", "") for m in applicant_meds])
-        dosage_units = safe_join([m.get("dosage_unit", "") for m in applicant_meds])
         frequencies = safe_join([m.get("frequency", "") for m in applicant_meds])
         descriptions = safe_join([m.get("description", "") for m in applicant_meds])
+
+        dosages_list = [m.get("dosage", "") for m in applicant_meds]
+        units_list = [m.get("dosage_unit", "") for m in applicant_meds]
+        unit_error = False
+        for d, u in zip(dosages_list, units_list):
+            std_d, std_u = normalize_dosage_value(d, u)
+            if std_d is None or std_u is None:
+                unit_error = True
+
+        if unit_error:
+            check_it = True
+            reason_checking_dosage_unit = "некорректная система измерения"
+        else:
+            reason_checking_dosage_unit = ""
+        dosages = safe_join(dosages_list)
+        dosage_units = safe_join(units_list)
+
+        combine_reasons = safe_join(
+            [reason_checking, reason_checking_logs, reason_checking_med, reason_checking_dosage_unit], placeholder="",
+        )
 
         records.append(
             {
@@ -153,6 +194,7 @@ def build_main_records(data: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "dosage_unit": dosage_units,
                 "frequencies": frequencies,
                 "descriptions": descriptions,
+                "combine_reasons": combine_reasons,
                 "reason_checking_logs": reason_checking_logs,
                 "reason_checking_med": reason_checking_med,
                 "reason_checking_dosage_unit": reason_checking_dosage_unit,
@@ -191,7 +233,7 @@ def build_medication_records(data: Dict[str, Any]) -> List[Dict[str, Any]]:
 
         std_dose = dosage
         std_unit = dosage_unit
-        #std_dose, std_unit = normalize_dosage_value(dosage, dosage_unit)
+        # std_dose, std_unit = normalize_dosage_value(dosage, dosage_unit)
 
         # пока check_it и reason_checking для строки медикамента
         # просто копируем из верхнего уровня;
@@ -204,7 +246,6 @@ def build_medication_records(data: Dict[str, Any]) -> List[Dict[str, Any]]:
             f"build_medication_records: uid={uid}, med_name={name!r}, "
             f"applicant_id={applicant_id}, dosage={dosage!r}, dosage_unit={dosage_unit!r}"
         )
-
 
         records.append(
             {
@@ -279,7 +320,7 @@ def json_to_tables_from_file(path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def append_to_global_tables(main_df_new: pd.DataFrame,
-    meds_df_new: pd.DataFrame,output_dir: str,) -> None:
+                            meds_df_new: pd.DataFrame, output_dir: str, ) -> None:
     """
     Добавляет новые записи в общие таблицы (applications.csv и medications.csv),
     не пересоздавая их и убирая дубли.
