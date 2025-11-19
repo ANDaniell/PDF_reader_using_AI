@@ -39,9 +39,9 @@ def normalize_dosage_value(dosage: str, dosage_unit: str):
 
 # ----------------- преобразование JSON -> записи ----------------- #
 
-def build_main_record(data: Dict[str, Any]) -> Dict[str, Any]:
+def build_main_records(data: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
-    Строит одну строку для общей таблицы заявки.
+    Строит строки для общей таблицы заявки по каждому аппликанту.
     """
     uid = data.get("uid", "")
     check_it = data.get("check_it", False)
@@ -52,67 +52,72 @@ def build_main_record(data: Dict[str, Any]) -> Dict[str, Any]:
     true_tier = data.get("true_tier", "")
 
     applicants = data.get("applicants", [])
-    # пока берём только главного заявителя (applicant 0)
-    main_app = applicants[0] if applicants else {}
-
-    applicant_id = main_app.get("applicant", 0)
-    is_main_applicant = main_app.get("is_main_applicant", True)
-    firstName = main_app.get("firstName", "")
-    lastName = main_app.get("lastName", "")
-    midName = main_app.get("midName", "")
-    phone = main_app.get("phone", "")
-    gender = main_app.get("gender", "")
-    dob = main_app.get("dob", "")
-    nicotine = main_app.get("nicotine", False)
-    weight = main_app.get("weight", 0)
-    height = main_app.get("height", 0)
-    heightFt = main_app.get("heightFt", 0)
-    heightIn = main_app.get("heightIn", 0)
+    if not applicants:
+        applicants = [{}]
 
     # медикаменты внутри phq.medications
     phq = data.get("phq", {})
     meds = phq.get("medications", [])
 
-    # для общей таблицы — агрегируем списки через "|"
-    medications = "|".join(m.get("name", "") for m in meds)
-    dosages = "|".join(m.get("dosage", "") for m in meds)
-    dosage_units = "|".join(m.get("dosage_unit", "") for m in meds)
-    frequencies = "|".join(m.get("frequency", "") for m in meds)
-    descriptions = "|".join(m.get("description", "") for m in meds)
+    # applicant поля в medications могут отсутствовать, поэтому берём id главного
+    default_applicant_id = applicants[0].get("applicant", 0) if applicants else 0
 
     # reason_checking_logs / _med / _dosage_unit сейчас отсутствуют в JSON
     reason_checking_logs = data.get("reason_checking_logs", "")
     reason_checking_med = data.get("reason_checking_med", "")
     reason_checking_dosage_unit = data.get("reason_checking_dosage_unit", "")
 
-    return {
-        "uid": uid,
-        "check_it": check_it,
-        "reason_checking": reason_checking,
-        "status": status,
-        "true_tier": true_tier,
-        "applicant_id": applicant_id,
-        "is_main_applicant": is_main_applicant,
-        "firstName": firstName,
-        "lastName": lastName,
-        "midName": midName,
-        "phone": phone,
-        "gender": gender,
-        "dob": dob,
-        "nicotine": nicotine,
-        "weight": weight,
-        "height": height,
-        "heightFt": heightFt,
-        "heightIn": heightIn,
-        "medications": medications,
-        "dosages": dosages,
-        "dosage_unit": dosage_units,
-        "frequencies": frequencies,
-        "descriptions": descriptions,
-        "reason_checking_logs": reason_checking_logs,
-        "reason_checking_med": reason_checking_med,
-        "reason_checking_dosage_unit": reason_checking_dosage_unit,
-    }
+    records: List[Dict[str, Any]] = []
+
+    for idx, applicant in enumerate(applicants):
+        applicant_id = applicant.get("applicant")
+        if applicant_id is None:
+            applicant_id = idx
+
+        applicant_meds = [
+            med
+            for med in meds
+            if med.get("applicant", default_applicant_id) == applicant_id
+        ]
+
+        medications = "|".join(m.get("name", "") for m in applicant_meds)
+        dosages = "|".join(m.get("dosage", "") for m in applicant_meds)
+        dosage_units = "|".join(m.get("dosage_unit", "") for m in applicant_meds)
+        frequencies = "|".join(m.get("frequency", "") for m in applicant_meds)
+        descriptions = "|".join(m.get("description", "") for m in applicant_meds)
+
+        records.append(
+            {
+                "uid": uid,
+                "check_it": check_it,
+                "reason_checking": reason_checking,
+                "status": status,
+                "true_tier": true_tier,
+                "applicant_id": applicant_id,
+                "is_main_applicant": applicant.get("is_main_applicant", idx == 0),
+                "firstName": applicant.get("firstName", ""),
+                "lastName": applicant.get("lastName", ""),
+                "midName": applicant.get("midName", ""),
+                "phone": applicant.get("phone", ""),
+                "gender": applicant.get("gender", ""),
+                "dob": applicant.get("dob", ""),
+                "nicotine": applicant.get("nicotine", False),
+                "weight": applicant.get("weight", 0),
+                "height": applicant.get("height", 0),
+                "heightFt": applicant.get("heightFt", 0),
+                "heightIn": applicant.get("heightIn", 0),
+                "medications": medications,
+                "dosages": dosages,
+                "dosage_unit": dosage_units,
+                "frequencies": frequencies,
+                "descriptions": descriptions,
+                "reason_checking_logs": reason_checking_logs,
+                "reason_checking_med": reason_checking_med,
+                "reason_checking_dosage_unit": reason_checking_dosage_unit,
+            }
+        )
+
+    return records
 
 
 def build_medication_records(data: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -174,10 +179,10 @@ def json_to_tables_from_dict(data: Dict[str, Any]) -> Tuple[pd.DataFrame, pd.Dat
     Принимает dict (JSON уже загружен) и возвращает
     два DataFrame: main_df, meds_df.
     """
-    main_record = build_main_record(data)
+    main_records = build_main_records(data)
     meds_records = build_medication_records(data)
 
-    main_df = pd.DataFrame([main_record])
+    main_df = pd.DataFrame(main_records)
     meds_df = pd.DataFrame(meds_records)
 
     return main_df, meds_df
