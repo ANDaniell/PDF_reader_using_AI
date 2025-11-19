@@ -12,6 +12,25 @@ MAIN_TABLE_FILENAME = "applications.csv"
 MEDS_TABLE_FILENAME = "medications.csv"
 
 
+def safe_join(values, placeholder="NaN"):
+    """
+    Собирает значения через '|', сохраняя структуру
+    """
+
+    cleaned = []
+    has_real_value = False
+
+    for v in values:
+        s = "" if pd.isna(v) else str(v).strip()
+
+        if not s or s == " | ":
+            cleaned.append(placeholder)
+        else:
+            cleaned.append(s)
+            has_real_value = True
+
+    return " | ".join(cleaned) if has_real_value else pd.NA
+
 # ----------------- нормализация дозировки ----------------- #
 
 def normalize_dosage_value(dosage: str, dosage_unit: str):
@@ -103,11 +122,11 @@ def build_main_records(data: Dict[str, Any]) -> List[Dict[str, Any]]:
             f"Для applicant_id={applicant_id} найдено медикаментов: {len(applicant_meds)}"
         )
 
-        medications = "|".join(m.get("name", "") for m in applicant_meds)
-        dosages = "|".join(m.get("dosage", "") for m in applicant_meds)
-        dosage_units = "|".join(m.get("dosage_unit", "") for m in applicant_meds)
-        frequencies = "|".join(m.get("frequency", "") for m in applicant_meds)
-        descriptions = "|".join(m.get("description", "") for m in applicant_meds)
+        medications = safe_join([m.get("name", "") for m in applicant_meds])
+        dosages = safe_join([m.get("dosage", "") for m in applicant_meds])
+        dosage_units = safe_join([m.get("dosage_unit", "") for m in applicant_meds])
+        frequencies = safe_join([m.get("frequency", "") for m in applicant_meds])
+        descriptions = safe_join([m.get("description", "") for m in applicant_meds])
 
         records.append(
             {

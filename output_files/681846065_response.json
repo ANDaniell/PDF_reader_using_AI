@@ -30,7 +30,7 @@
     "invalid": false,
     "pregnancy": false,
     "effectiveDate": "2024-01-01",
-    "disclaimer": false,
+    "disclaimer": true,
     "signature": "",
     "medications": [
       {

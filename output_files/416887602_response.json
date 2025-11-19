@@ -1,7 +1,7 @@
 {
   "uid": "416887602",
-  "check_it": false,
-  "reason_checking": "",
+  "check_it": true,
+  "reason_checking": "Dependent Information section exists but no individuals are listed.",
   "applicants": [
     {
       "applicant": 0,
