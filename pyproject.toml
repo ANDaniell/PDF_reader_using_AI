@@ -1,0 +1,17 @@
+[project]
+name = "pdf-reader-using-ai"
+version = "0.1.0"
+description = "PDF reader using AI (OpenAI) to extract and normalize data from medical PDFs"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "openai==1.40.0",
+    "pandas==2.2.2",
+    "pdfplumber==0.11.0",
+    "pymupdf>=1.26.6",
+    "pypdf==4.2.0",
+    "python-dotenv==1.0.1",
+]
+[tool.uv.scripts]
+main = "python main.py"
+tables = "python tables.py"
