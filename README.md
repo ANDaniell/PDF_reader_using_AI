@@ -37,6 +37,7 @@ pip install uv
 ```bash
 git clone https://github.com/ANDaniell/PDF_reader_using_AI.git
 cd PDF_reader_using_AI
+git checkout uv-and-ruff
 ```
 ### 3. Установка зависимостей
 ```bash
